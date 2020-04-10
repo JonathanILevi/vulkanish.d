@@ -9,3 +9,10 @@ targetPath	"build"
 
 dependency "foreignptr" version="~>1.0.0"
 dependency "erupted" version="~>2.0.54"
+
+configuration "no-destroy-asst" {
+	versions "NoDestroyAsst";
+}
+configuration "gc-destroy-asst" {
+	versions "GCDestroyAsst";
+}

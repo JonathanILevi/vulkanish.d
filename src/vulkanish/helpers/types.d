@@ -10,8 +10,11 @@ import std.conv;
 
 alias Vsh(string name) = Vsh!(mixin("Vk"~name));
 template Vsh(T) {
-	static if (T.stringof.endsWith("_handle*") && __traits(compiles, mixin("vkDestroy"~T.stringof["vk".length..$-"_handle*".length]))) {
+	version(GCDestroyAsst) {
+		static if (T.stringof.endsWith("_handle*") && __traits(compiles, mixin("vkDestroy"~T.stringof["vk".length..$-"_handle*".length])))
 		alias Vsh = ForeignPtr!T;
+		else
+			alias Vsh = T;
 	}
 	else {
 		alias Vsh = T;
