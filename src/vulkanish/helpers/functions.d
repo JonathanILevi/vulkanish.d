@@ -13,10 +13,6 @@ import std.string;
 import std.conv;
 import std.typecons;
 
-version(GCDestroyAsst) {
-	public import vulkanish.helpers.gc_destroy_asst.functions;
-}
-
 alias vshEnumerateAlt(string name) = vshEnumerate!(functionMixin!("vk"~name));
 alias vshEnumerate(string name) = vshEnumerate!(functionMixin!("vkEnumerate"~name));
 template vshEnumerate(alias f_unenforced)
@@ -82,9 +78,43 @@ template vsh(alias f_unenforced)
 	}
 }
 
-version(NoDestroyAsst) {
-	alias vshCreate(string name) = vsh!("Create"~name);
-	alias vshDestroy(string name) = vsh!("Destroy"~name);
+alias vshCreate(string name) = vsh!("Create"~name);
+alias vshDestroy(string name) = vsh!("Destroy"~name);
+
+
+template vshCreateScoped(Ts...)
+////if ((Ts.length==1 && is(typeof(Ts[0])==string)) || (Ts.length==2 && isCallable!(Ts[0]) && isCallable!(Ts[1])))
+{
+	static if (Ts.length==1 && is(typeof(Ts[0])==string)) {
+		enum name = Ts[0];
+		alias f_unenforced = functionMixin!("vkCreate"~Ts[0]);
+		alias destroy = functionMixin!("vkDestroy"~Ts[0]);
+	}
+	else static if (Ts.length==2 && isCallable!(Ts[0]) && isCallable!(Ts[1])) {
+		alias f_unenforced = Ts[0];
+		alias destroy = Ts[1];
+	}
+	else {
+		static assert(false);
+	}
+	alias f = enforced!f_unenforced;
+	alias Params = Parameters!f;
+	alias T = PointerTarget!(Params[$-1]);
+	alias ScopedT = VshScoped!T;
+	// Returns through last argument as pointer.
+	static assert (isPointer!(Params[$-1]));
+	ScopedT vshCreateScoped(Parameters!f[0..$-1] args) {
+		T outPtr;
+		f(args, &outPtr);
+		return ScopedT(args[0..Parameters!(ScopedT.__ctor).length-1], outPtr);
+	}
+	// Second to last argument allocator.
+	static assert (is(Params[$-2] == const(VkAllocationCallbacks)*));
+	ScopedT vshCreateScoped(Params[0..$-2] args) {
+		T outPtr;
+		f(args, null, &outPtr);
+		return ScopedT(args[0..Parameters!(ScopedT.__ctor).length-1], outPtr);
+	}
 }
 
 
